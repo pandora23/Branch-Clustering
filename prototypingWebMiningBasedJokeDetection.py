@@ -67,7 +67,7 @@ class taxonomyTree(object):
 def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords, stringSoFar, depth, targetDepth):
     
     
-    if depth > targetDepth:
+    if depth >= targetDepth:
         return
 
     newDepth = depth + 1
@@ -150,17 +150,28 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
                 print(indexList)
                 #DISTANCE TO TARGET
                 distanceFromTarget = 5
-                
+
                 try:
                     for index in indexList:
                         if index < distanceFromTarget:
-                            pageTokens.append(page[:(index+distanceFromTarget)])
+                            pageTokens = pageTokens + page[:(index+distanceFromTarget)]
                         if (index + distanceFromTarget) >= len(page):
-                            pageTokens.append(page[(index-distanceFromTarget):])
+                            pageTokens = pageTokens + page[(index-distanceFromTarget):]
                         else:
-                            pageTokens.append(page[(index-distanceFromTarget):(index+distanceFromTarget)])
+                            pageTokens = pageTokens + page[(index-distanceFromTarget):(index+distanceFromTarget)]
                 except:
                     pass
+                
+##                try:
+##                    for index in indexList:
+##                        if index < distanceFromTarget:
+##                            pageTokens.append(page[:(index+distanceFromTarget)])
+##                        if (index + distanceFromTarget) >= len(page):
+##                            pageTokens.append(page[(index-distanceFromTarget):])
+##                        else:
+##                            pageTokens.append(page[(index-distanceFromTarget):(index+distanceFromTarget)])
+##                except:
+##                    pass
             print(pageTokens)
 
             docTokens = []
@@ -169,14 +180,15 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
                 #print("PT")
                 #print(pageTokens)
                 
-                
+                #change back single letter / test for now
                 if pageTokens != []:
-                    for set1 in pageTokens:
-                        for token in set1:
-                            #print(type(token))
-                            if isinstance(token, str):
-                                if token.lower() not in stopwords and token.lower() and token.lower() in words:
-                                    docTokens.append(token.lower())
+                    docTokens  = [token.lower() for token in pageTokens if token.lower() not in stopwords and token.lower() in words]
+##                    for token in pageTokens:
+##                        #for token in set1:
+##                            #print(type(token))
+##                        if isinstance(token, str):
+##                            if token.lower() not in stopwords and token.lower() in words:
+##                                docTokens.append(token.lower())
                     
             except:
                 pass
@@ -207,7 +219,7 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
     print(depth);
     
     if(depth == 0):
-        branchFactor = 5;
+        branchFactor = 3;
     else:
         branchFactor = 50;
     
@@ -219,7 +231,7 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
     for child in node.children:
           
           string = child + " " + stringSoFar
-          #print(string)
+          print(string)
           branch = buildTaxonomyUsingWebMining(node, child, stopwords, words, otherWords, string, newDepth, targetDepth)
           node.childTreeLinks.append(branch)
 
@@ -249,22 +261,34 @@ que = Queue.Queue()
 
 que.put(tree)
 
+nextLevSize = len(tree.children)
+thisLevelProcessed = 0
+temp = 0
+
+
 while que.empty() == False:
     nextChild = que.get()
-
+    
     print("child at level: " + str(level))
     print(nextChild.data)
-
+    
     try:
         wordIndex = words.index(nextChild.data)
         treeWordFrequencyVector[wordIndex] = treeWordFrequencyVector[wordIndex] + 1
     except:
         pass
-    
+
+    temp = temp + len(nextChild.children)
     for link in nextChild.childTreeLinks:
+        
         if link != None:
             que.put(link)
-
+            
+    thisLevelProcessed = thisLevelProcessed  + 1
+    if(thisLevelProcessed == nextLevSize):
+        nextLevSize = temp
+        thisLevelProcessed = 0
+        level = level+1
 
 def depthFirstTreeIterate(treeNode):
 
