@@ -23,7 +23,7 @@ def depthFirstTreeIterate(treeNode):
 
 #test grab the pickly file
 
-testPk = open('fish5.pkl','rb')
+testPk = open('fish6.pkl','rb')
 
 tree = pickle.load(testPk)
 

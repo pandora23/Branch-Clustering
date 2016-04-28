@@ -42,7 +42,7 @@ def getSearchResultsGoogle(searchString, number):
 #bing limits to 50 results at a time, iterations is number of 50 result chunks to include
 def getSearchResultsBing(searchString, number):
 
-    iterations = number/50
+    iterations = number/40
     
     #for api
     #key = '1Hryit2sBmTJrkkU57TdTjQJsAiOx0TaVZXxcA7KVbc'
@@ -81,4 +81,4 @@ def getSearchResultsBing(searchString, number):
             
     return searchTitles
 
-test = getSearchResultsBing("fish fry if", 50)
+test = getSearchResultsBing("fish fry if", 120)

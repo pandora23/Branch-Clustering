@@ -12,7 +12,14 @@ import urllib
 import re
 import Queue
 import searchEngine
-
+import csv
+from sklearn.decomposition import TruncatedSVD
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.preprocessing import Normalizer
+from sklearn import metrics
+from sklearn.cluster import KMeans, MiniBatchKMeans
 
 #triple extraction
 def tripleExtraction(text, stopWords):
@@ -54,6 +61,7 @@ triples = tripleExtraction(sentence, stopwords)
 ##    return data['totalResults']
 
 
+bigramVectorizer = CountVectorizer(ngram_range=(1,2), token_pattern=r'\b\w+\b',min_df=1, max_features = 500);
 
 class taxonomyTree(object):
     def __init__(self):
@@ -74,11 +82,14 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
     
     node = taxonomyTree()
     
-    node.data = rootString
+    node.data = stringSoFar
 
-    resultsToFind = 50
+    resultsToFind = 40
     
     results = searchEngine.getSearchResultsBing(stringSoFar, resultsToFind)
+
+    #TEMPORARY, FOR DEV
+    #results = results[:10]
 
     rootWords = nltk.word_tokenize(stringSoFar)
     print("rootwords:")
@@ -95,32 +106,33 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
     print("Number of results: " + str(numTitles))
    
     #go through each result url and get the text
-    for result in results:
+    for result in results[:10]:
         #print(results['formattedUrl'])
         print(result)
         accepted = False
-        try:
-            #go to site and get webpage
-
+        if 'pdf' not in result:
             try:
-                #url = "https://" + result
-                url = result
+                #go to site and get webpage
+
+                try:
+                    #url = "https://" + result
+                    url = result
+                    #print(url)
+                    page = urllib2.urlopen(url).read()
+
+                except:
+                    #url = "http://" + result
+                    page = urllib2.urlopen(url).read()
+                    
+
                 #print(url)
-                page = urllib2.urlopen(url).read()
 
-            except:
-                #url = "http://" + result
-                page = urllib2.urlopen(url).read()
+                accepted = True
                 
-
-            #print(url)
-
-            accepted = True
-            
-        except:
-            
-            pass
-            
+            except:
+                
+                pass
+                
 
         #find indexes of rootwords
         if accepted == True:
@@ -136,7 +148,7 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
             pageTokens = []
             
             for word in rootWords:
-                print(word)
+                #print(word)
                 #grab all indexes
                 indexList = []
                 i = -1
@@ -147,7 +159,7 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
                 except:
                     pass
 
-                print(indexList)
+                #print(indexList)
                 #DISTANCE TO TARGET
                 distanceFromTarget = 5
 
@@ -172,7 +184,7 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
 ##                            pageTokens.append(page[(index-distanceFromTarget):(index+distanceFromTarget)])
 ##                except:
 ##                    pass
-            print(pageTokens)
+            #print(pageTokens)
 
             docTokens = []
 
@@ -182,7 +194,8 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
                 
                 #change back single letter / test for now
                 if pageTokens != []:
-                    docTokens  = [token.lower() for token in pageTokens if token.lower() not in stopwords and token.lower() in words]
+                    docTokens  = [token.lower() for token in pageTokens if token.lower() not in stopwords and token.lower() in words and len(token.lower()) > 1
+                                  and token.lower() not in rootWords]
 ##                    for token in pageTokens:
 ##                        #for token in set1:
 ##                            #print(type(token))
@@ -194,34 +207,56 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
                 pass
                 
             if docTokens != []:
-                wordSets.append(set(docTokens))
+                #wordSets.append(set(docTokens))
                 allData.append(docTokens)
             
 #REPLACE WITH TFIDF
 
 
     #words common to all
-    try:
-        commonWords = set.intersection(*wordSets)
-    except:
-        print('none')
-        commonWords = []
+##    try:
+##        commonWords = set.intersection(*wordSets)
+##    except:
+##        print('none')
+##        commonWords = []
         
     allwordslist = list()
-
+    docStrings = []
     for lists in allData:
+        nextStr = ' '.join(lists)
+        print(nextStr)
+        docStrings.append(nextStr)
         for token in lists:
             allwordslist.append(token)
 
     #get frequency distribution
     fdist = FreqDist(allwordslist)
 
+    #alternate TFIDF
+    print(allData)
+    bigramVectorizer = CountVectorizer(ngram_range=(1,2), token_pattern=r'\b\w+\b',min_df=1, max_features = 500);
+    transformed = bigramVectorizer.fit_transform(docStrings)
+    tags = bigramVectorizer.get_feature_names()
+    tf_transformer = TfidfTransformer(use_idf=True).fit(transformed)
+    tf = tf_transformer.transform(transformed)
+    
+    for doc in tf:
+        doc = doc.toarray()
+        freqs = {}
+        for word, freq in zip(tags,doc[0]):
+                freqs.update({word:float(freq)})
+        print('testIDF')
+        print(freqs)
+    
+    
     print(depth);
     
     if(depth == 0):
-        branchFactor = 3;
+        branchFactor = 15;
+    if(depth == 1):
+        branchFactor = 10;
     else:
-        branchFactor = 50;
+        branchFactor = 30;
     
     node.children=fdist.keys()[:branchFactor]
 
@@ -231,6 +266,7 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
     for child in node.children:
           
           string = child + " " + stringSoFar
+          print("String so far")
           print(string)
           branch = buildTaxonomyUsingWebMining(node, child, stopwords, words, otherWords, string, newDepth, targetDepth)
           node.childTreeLinks.append(branch)
@@ -238,11 +274,11 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
 
     return node
 
-tree = buildTaxonomyUsingWebMining(None, "tank", stopwords, words, otherWords, "tank", 0, 2)
+tree = buildTaxonomyUsingWebMining(None, "tank", stopwords, words, otherWords, "tank", 0, 3)
 
 
 #pickle the tree
-output = open('fish5.pkl','wb')
+output = open('fish6.pkl','wb')
 
 pickle.dump(tree,output)
 
@@ -252,7 +288,7 @@ pickle.dump(tree,output)
 featureVector = []
 
 #breadth first extraction of features
-level = 0
+level = 1
 
 #initialize word vector for tree
 treeWordFrequencyVector = [0 for x in range(len(words))]
@@ -270,7 +306,7 @@ while que.empty() == False:
     nextChild = que.get()
     
     print("child at level: " + str(level))
-    print(nextChild.data)
+    print(nextChild.children)
     
     try:
         wordIndex = words.index(nextChild.data)
@@ -285,8 +321,9 @@ while que.empty() == False:
             que.put(link)
             
     thisLevelProcessed = thisLevelProcessed  + 1
-    if(thisLevelProcessed == nextLevSize):
+    if(thisLevelProcessed == temp):
         nextLevSize = temp
+        temp = 0
         thisLevelProcessed = 0
         level = level+1
 
@@ -298,6 +335,47 @@ def depthFirstTreeIterate(treeNode):
         for child in treeNode.childTreeLinks:
             depthFirstTreeIterate(child)
     return
+
+
+#csv
+
+#make array with all words
+allWords1 = []
+for child in tree.childTreeLinks:
+    print(child.children)
+    for c in child.childTreeLinks:
+        for w1 in c.data.split():
+            if w1 not in allWords1:
+                allWords1.append(w1)
+        for w in c.children:
+            if w not in allWords1:
+                allWords1.append(w)
+
+print(allWords1)
+
+#go through subtrees and build arrays
+
+dataPoints = []
+for child in tree.childTreeLinks:
+    for c in child.childTreeLinks:
+        data = []
+        for z in range(len(allWords1)):
+            data.append(0)
+        for w1 in c.data.split():
+            data[allWords1.index(w1)] = 1
+        for w in c.children:
+            data[allWords1.index(w)] = 1
+        dataPoints.append(data)
+
+#csv
+with open('taxonomySubtreeFreqs3levels.csv', 'wb') as csvfile:
+    writer = csv.writer(csvfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+    labels = allWords1
+    writer.writerow(labels)
+    for d in dataPoints:
+        writer.writerow(d)
+
+
 
 
 #branch seperations
@@ -428,21 +506,26 @@ def phoRelated(word1, word2, phoneticDict):
 #test python template
 
 def testTemplate(word1, word2, word3):
-    phoRelated1 = phoRelated(word1, word3, entries)
+    phoRelated1 = phoRelated(word1, word2, entries)
     #semRelated1 = getSemanticSimilarity(word1, word3)
-    phoRelated2 = phoRelated(word2, word3, entries)
+    #phoRelated2 = phoRelated(word2, word3, entries)
     #semRelated2 = getSemanticSimilarity(word2, word3)
     if phoRelated1:
-        if phoRelated2:
-            print(word1, word2, word3)
+        #if phoRelated2:
+        print(word1, word2)
 
 
 #test
-for entry1 in entries[0:10]:
+##for entry1 in entries[0:10]:
+##    for entry2 in entries[0:10]:
+##        for entry3 in entries[0:10]:
+##            if entry1 != entry2 and entry1 != entry3 and entry2 != entry3:
+##                #print(entry1[0], entry2[0], entry3[0])
+##                testTemplate(entry1[0], entry2[0], entry3[0])
+for entry1 in entries[0:20]:
+    #for entry2 in entries[0:10]:
     for entry2 in entries[0:10]:
-        for entry3 in entries[0:10]:
-            if entry1 != entry2 and entry1 != entry3 and entry2 != entry3:
-                #print(entry1[0], entry2[0], entry3[0])
-                testTemplate(entry1[0], entry2[0], entry3[0])
-
+        if entry1 != entry2:
+            #print(entry1[0], entry2[0], entry3[0])
+            testTemplate(entry1[0], entry2[0], '')
     
