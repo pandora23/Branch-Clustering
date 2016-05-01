@@ -39,6 +39,8 @@ stopwords = nltk.corpus.stopwords.words('english')
 words = nltk.corpus.words.words('en')
 otherWords = ['index', 'account', 'may']
 triples = tripleExtraction(sentence, stopwords)
+numProcessed = 0
+
 #print(triples)
 
 #get number of search results
@@ -84,7 +86,7 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
     
     node.data = stringSoFar
 
-    resultsToFind = 40
+    resultsToFind = 80
     
     results = searchEngine.getSearchResultsBing(stringSoFar, resultsToFind)
 
@@ -106,7 +108,7 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
     print("Number of results: " + str(numTitles))
    
     #go through each result url and get the text
-    for result in results[:10]:
+    for result in results[:]:
         #print(results['formattedUrl'])
         print(result)
         accepted = False
@@ -221,44 +223,55 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
 ##        commonWords = []
         
     allwordslist = list()
-    docStrings = []
+    docStrings = ''
     for lists in allData:
-        nextStr = ' '.join(lists)
-        print(nextStr)
-        docStrings.append(nextStr)
+        #nextStr = ' '.join(lists)
+        #print(nextStr)
+        #docStrings.append(nextStr)
         for token in lists:
             allwordslist.append(token)
 
+    resultData = ' '.join(allwordslist)
+    print(resultData)
+    
     #get frequency distribution
     fdist = FreqDist(allwordslist)
 
     #alternate TFIDF
-    print(allData)
-    bigramVectorizer = CountVectorizer(ngram_range=(1,2), token_pattern=r'\b\w+\b',min_df=1, max_features = 500);
-    transformed = bigramVectorizer.fit_transform(docStrings)
+    #print(allData)
+    bigramVectorizer = CountVectorizer(ngram_range=(1,2), token_pattern=r'\b\w+\b',min_df=1, max_features = 10000);
+    transformed = bigramVectorizer.fit_transform([resultData])
     tags = bigramVectorizer.get_feature_names()
-    tf_transformer = TfidfTransformer(use_idf=True).fit(transformed)
+    tf_transformer = TfidfTransformer(use_idf=False).fit(transformed)
     tf = tf_transformer.transform(transformed)
+    
     
     for doc in tf:
         doc = doc.toarray()
         freqs = {}
         for word, freq in zip(tags,doc[0]):
                 freqs.update({word:float(freq)})
-        print('testIDF')
-        print(freqs)
-    
+        
+        print('testIDFUNSORTED')
+        #print(freqs)
+        print('testIDFSorted')
+        freqs = sorted(freqs.items(), key=lambda x: x[1], reverse=True)
+        #print(freqs)
     
     print(depth);
     
     if(depth == 0):
         branchFactor = 15;
-    if(depth == 1):
-        branchFactor = 10;
+    elif(depth == 1):
+        branchFactor = 5;
     else:
         branchFactor = 30;
     
-    node.children=fdist.keys()[:branchFactor]
+    #node.children=fdist.keys()[:branchFactor]
+    #node.children = freqs.keys()[:branchFactor]
+    for f in freqs[:branchFactor]:
+        node.children.append(f[0])
+    
 
     print("children at depth " + str(depth) + " :")
     print(node.children)
@@ -270,7 +283,12 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
           print(string)
           branch = buildTaxonomyUsingWebMining(node, child, stopwords, words, otherWords, string, newDepth, targetDepth)
           node.childTreeLinks.append(branch)
-
+          global numProcessed
+          numProcessed = numProcessed + 1
+          print('NUM Processed')
+          print(numProcessed)
+          print('TOtal')
+          print(15 * 5 * 30)
 
     return node
 
@@ -522,10 +540,10 @@ def testTemplate(word1, word2, word3):
 ##            if entry1 != entry2 and entry1 != entry3 and entry2 != entry3:
 ##                #print(entry1[0], entry2[0], entry3[0])
 ##                testTemplate(entry1[0], entry2[0], entry3[0])
-for entry1 in entries[0:20]:
-    #for entry2 in entries[0:10]:
-    for entry2 in entries[0:10]:
-        if entry1 != entry2:
-            #print(entry1[0], entry2[0], entry3[0])
-            testTemplate(entry1[0], entry2[0], '')
+##for entry1 in entries[0:20]:
+##    #for entry2 in entries[0:10]:
+##    for entry2 in entries[0:10]:
+##        if entry1 != entry2:
+##            #print(entry1[0], entry2[0], entry3[0])
+##            testTemplate(entry1[0], entry2[0], '')
     
