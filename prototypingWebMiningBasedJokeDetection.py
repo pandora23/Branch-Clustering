@@ -108,11 +108,11 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
     print("Number of results: " + str(numTitles))
    
     #go through each result url and get the text
-    for result in results[:]:
+    for result in results[:60]:
         #print(results['formattedUrl'])
         print(result)
         accepted = False
-        if 'pdf' not in result:
+        if 'pdf' not in result and 'gbrx' not in result:
             try:
                 #go to site and get webpage
 
@@ -386,9 +386,18 @@ for child in tree.childTreeLinks:
         dataPoints.append(data)
 
 #csv
-with open('taxonomySubtreeFreqs3levels.csv', 'wb') as csvfile:
+
+#tarded, so fucking tarded that csvwriter doesn't understand two word entries
+labels  = []
+for entry in allWords1:
+    entry = entry.replace(' ', '_')
+    print(entry)
+    labels.append(entry)
+
+
+with open('taxonomySubtreeFreqs3levels2.csv', 'wb') as csvfile:
     writer = csv.writer(csvfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-    labels = allWords1
+    #labels = allWords1
     writer.writerow(labels)
     for d in dataPoints:
         writer.writerow(d)
