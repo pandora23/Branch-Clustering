@@ -86,7 +86,7 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
     
     node.data = stringSoFar
 
-    resultsToFind = 80
+    resultsToFind = 120
     
     results = searchEngine.getSearchResultsBing(stringSoFar, resultsToFind)
 
@@ -108,11 +108,11 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
     print("Number of results: " + str(numTitles))
    
     #go through each result url and get the text
-    for result in results[:60]:
+    for result in results[:]:
         #print(results['formattedUrl'])
         print(result)
         accepted = False
-        if 'pdf' not in result and 'gbrx' not in result:
+        if 'pdf' not in result and 'gbrx' not in result and 'weebly' not in result:
             try:
                 #go to site and get webpage
 
@@ -261,9 +261,9 @@ def buildTaxonomyUsingWebMining(parent, rootString, stopwords, words, htmlWords,
     print(depth);
     
     if(depth == 0):
-        branchFactor = 15;
+        branchFactor = 20;
     elif(depth == 1):
-        branchFactor = 5;
+        branchFactor = 10;
     else:
         branchFactor = 30;
     
@@ -395,7 +395,7 @@ for entry in allWords1:
     labels.append(entry)
 
 
-with open('taxonomySubtreeFreqs3levels2.csv', 'wb') as csvfile:
+with open('taxonomySubtreeFreqs3levels120.csv', 'wb') as csvfile:
     writer = csv.writer(csvfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
     #labels = allWords1
     writer.writerow(labels)
